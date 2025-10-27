@@ -2,13 +2,23 @@
 
 A full-stack application for separating vocals from music using **Demucs**, a state-of-the-art AI-powered vocal separation model. Perfect for creating karaoke tracks!
 
+## Screenshots
+
+### Main Interface - Star Wars Dark Side Theme
+![Main UI](assets/Screenshot%202025-10-27%20215815.png)
+
+### Audio Player & Results
+![Results View](assets/Screenshot-2.png)
+
 ## Features
 
 - 🎤 **High-Quality Vocal Separation** - Uses Facebook Research's Demucs model
 - 🎵 **Multiple Format Support** - Works with MP3, WAV, FLAC, and more
 - 🚀 **Fast Processing** - Efficient vocal/instrumental separation
-- 💻 **Easy to Use** - Simple web interface
+- 💻 **Easy to Use** - Simple web interface with Star Wars Dark Side theme
 - 📥 **Downloadable Results** - Get both vocal and instrumental tracks
+- 🎧 **Audio Preview** - Listen to separated tracks before downloading
+- 📊 **Real-time Progress** - WebSocket-powered progress tracking with lightsaber-themed progress bar
 
 ## Technology Stack
 
