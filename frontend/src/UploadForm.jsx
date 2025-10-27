@@ -1,14 +1,29 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import "./UploadForm.css";
 
 export default function UploadForm() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
+  const wsRef = useRef(null);
+  const clientIdRef = useRef(Math.random().toString(36).substring(7));
+
+  useEffect(() => {
+    // Cleanup WebSocket on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
     setError(null);
+    setResult(null);
   };
 
   const handleSubmit = async (e) => {
@@ -20,12 +35,33 @@ export default function UploadForm() {
     
     setLoading(true);
     setError(null);
+    setProgress(0);
+    setResult(null);
     
     try {
+      // Establish WebSocket connection for progress updates
+      const ws = new WebSocket(`ws://localhost:8000/ws/${clientIdRef.current}`);
+      wsRef.current = ws;
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        setProgress(data.progress);
+        setProgressMessage(data.message);
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+      
+      // Wait for WebSocket to connect
+      await new Promise((resolve) => {
+        ws.onopen = resolve;
+      });
+      
       const form = new FormData();
       form.append("file", file);
       
-      const resp = await fetch("http://localhost:8000/separate/", {
+      const resp = await fetch(`http://localhost:8000/separate/${clientIdRef.current}`, {
         method: "POST",
         body: form,
       });
@@ -42,8 +78,14 @@ export default function UploadForm() {
       }
       
       setResult(data);
+      
+      // Close WebSocket
+      if (ws) {
+        ws.close();
+      }
     } catch (err) {
       setError(err.message);
+      setProgress(0);
     } finally {
       setLoading(false);
     }
@@ -60,41 +102,144 @@ export default function UploadForm() {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "600px", margin: "0 auto" }}>
-      <h2>Vocal Removal</h2>
-      <form onSubmit={handleSubmit}>
-        <input 
-          type="file" 
-          accept="audio/*" 
-          onChange={handleFileChange}
-          disabled={loading}
-        />
-        <button type="submit" disabled={loading || !file}>
-          {loading ? "Processing..." : "Separate"}
+    <div className="upload-container">
+      <div className="sith-glow"></div>
+      
+      <div className="header">
+        <h1 className="title">
+          <span className="sith-text">DARK SIDE</span>
+          <span className="subtitle">Vocal Separation System</span>
+        </h1>
+        <p className="tagline">"The Force is strong with this one..."</p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="upload-form">
+        <div className="file-input-wrapper">
+          <input 
+            type="file" 
+            accept="audio/*,audio/mp3,audio/mpeg" 
+            onChange={handleFileChange}
+            disabled={loading}
+            id="file-input"
+            className="file-input"
+          />
+          <label htmlFor="file-input" className="file-label">
+            <span className="file-icon">🎵</span>
+            <span className="file-text">
+              {file ? file.name : "Choose your destiny... (Select Audio File)"}
+            </span>
+          </label>
+        </div>
+
+        <button 
+          type="submit" 
+          disabled={loading || !file}
+          className={`submit-button ${loading ? 'processing' : ''}`}
+        >
+          <span className="button-text">
+            {loading ? "⚔️ EXECUTING..." : "⚔️ INITIATE SEPARATION"}
+          </span>
+          <span className="button-glow"></span>
         </button>
       </form>
+
+      {loading && (
+        <div className="progress-container">
+          <div className="progress-label">{progressMessage}</div>
+          <div className="progress-bar-wrapper">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${Math.max(0, progress)}%` }}
+              >
+                <div className="lightsaber-glow"></div>
+              </div>
+            </div>
+            <div className="progress-percentage">{Math.max(0, progress)}%</div>
+          </div>
+          <div className="loading-text">
+            <span className="pulse">●</span> The Dark Side is processing your file...
+          </div>
+        </div>
+      )}
       
       {error && (
-        <div style={{ color: "red", marginTop: "10px" }}>
-          Error: {error}
+        <div className="error-message">
+          <div className="error-icon">⚠️</div>
+          <div className="error-text">
+            <strong>Disturbance in the Force:</strong><br />
+            {error}
+          </div>
         </div>
       )}
       
-      {result && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>Results:</h3>
-          <div style={{ marginTop: "10px" }}>
-            <button onClick={() => downloadFile(result.vocals, "Vocals")}>
-              Download Vocals
-            </button>
-          </div>
-          <div style={{ marginTop: "10px" }}>
-            <button onClick={() => downloadFile(result.instrumental, "Instrumental")}>
-              Download Instrumental
-            </button>
+      {result && !loading && (
+        <div className="results-container">
+          <h3 className="results-title">
+            <span className="success-icon">✓</span> Separation Complete
+          </h3>
+          
+          <div className="download-grid">
+            <div className="download-card vocals">
+              <div className="card-header">
+                <span className="card-icon">🎤</span>
+                <span className="card-title">Vocals</span>
+              </div>
+              <div className="card-filename">{result.vocals}</div>
+              
+              {/* Audio Player */}
+              <div className="audio-player-wrapper">
+                <audio 
+                  controls 
+                  className="audio-player"
+                  src={`http://localhost:8000/download/${result.vocals}`}
+                >
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+              
+              <button 
+                onClick={() => downloadFile(result.vocals, "Vocals")}
+                className="download-button"
+              >
+                <span className="download-icon">⬇</span>
+                Download Vocals
+              </button>
+            </div>
+
+            <div className="download-card instrumental">
+              <div className="card-header">
+                <span className="card-icon">🎸</span>
+                <span className="card-title">Instrumental</span>
+              </div>
+              <div className="card-filename">{result.instrumental}</div>
+              
+              {/* Audio Player */}
+              <div className="audio-player-wrapper">
+                <audio 
+                  controls 
+                  className="audio-player"
+                  src={`http://localhost:8000/download/${result.instrumental}`}
+                >
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+              
+              <button 
+                onClick={() => downloadFile(result.instrumental, "Instrumental")}
+                className="download-button"
+              >
+                <span className="download-icon">⬇</span>
+                Download Instrumental
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      <div className="footer">
+        <p className="force-quote">"Much to learn, you still have."</p>
+      </div>
     </div>
   );
 }
