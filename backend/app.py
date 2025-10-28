@@ -7,6 +7,8 @@ from tempfile import NamedTemporaryFile
 import shutil
 import asyncio
 import json
+from datetime import datetime, timedelta
+import glob
 
 app = FastAPI()
 
@@ -31,12 +33,36 @@ os.makedirs("outputs", exist_ok=True)
 
 separator = VocalSeparator()
 
+def cleanup_old_files(max_age_minutes=30):
+    """
+    Clean up output files older than max_age_minutes
+    This prevents disk space from filling up with old processed files
+    """
+    try:
+        cutoff_time = datetime.now() - timedelta(minutes=max_age_minutes)
+        output_files = glob.glob(os.path.join("outputs", "*.mp3"))
+        
+        for file_path in output_files:
+            # Check file modification time
+            file_mtime = datetime.fromtimestamp(os.path.getmtime(file_path))
+            if file_mtime < cutoff_time:
+                try:
+                    os.remove(file_path)
+                    print(f"Cleaned up old file: {file_path}")
+                except Exception as e:
+                    print(f"Could not delete {file_path}: {e}")
+    except Exception as e:
+        print(f"Cleanup error: {e}")
+
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "Vocal Removal API is running"}
 
 @app.post("/separate/")
 async def separate(file: UploadFile = File(...)):
+    # Clean up old files before processing new one
+    cleanup_old_files(max_age_minutes=30)
+    
     # save upload
     tmp = NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
     try:
@@ -119,6 +145,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 @app.post("/separate/{client_id}")
 async def separate_with_progress(client_id: str, file: UploadFile = File(...)):
     """Separate with progress updates via WebSocket"""
+    # Clean up old files before processing new one
+    cleanup_old_files(max_age_minutes=30)
+    
     tmp = NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1])
     try:
         # Send initial progress
