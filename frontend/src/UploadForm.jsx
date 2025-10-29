@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import "./UploadForm.css";
 
 export default function UploadForm() {
@@ -8,17 +8,7 @@ export default function UploadForm() {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
-  const wsRef = useRef(null);
-  const clientIdRef = useRef(Math.random().toString(36).substring(7));
-
-  useEffect(() => {
-    // Cleanup WebSocket on unmount
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, []);
+  const clientId = Math.random().toString(36).substring(7);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -37,35 +27,28 @@ export default function UploadForm() {
     setError(null);
     setProgress(0);
     setResult(null);
+    setProgressMessage("Uploading file...");
     
     try {
-      // Establish WebSocket connection for progress updates
-      // Use wss:// for secure WebSocket connection with Render
-      const ws = new WebSocket(`wss://vocal-removal-app.onrender.com/ws/${clientIdRef.current}`);
-      wsRef.current = ws;
-      
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        setProgress(data.progress);
-        setProgressMessage(data.message);
-      };
-      
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-      };
-      
-      // Wait for WebSocket to connect
-      await new Promise((resolve) => {
-        ws.onopen = resolve;
-      });
+      // Simulate progress updates since WebSocket might not work on Render free tier
+      const progressInterval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 90) return prev;
+          return prev + Math.random() * 10;
+        });
+      }, 2000);
       
       const form = new FormData();
       form.append("file", file);
       
-      const resp = await fetch(`https://vocal-removal-app.onrender.com/separate/${clientIdRef.current}`, {
+      setProgressMessage("Processing audio... This may take 5-6 minutes for high quality.");
+      
+      const resp = await fetch(`https://vocal-removal-app.onrender.com/separate/${clientId}`, {
         method: "POST",
         body: form,
       });
+      
+      clearInterval(progressInterval);
       
       if (!resp.ok) {
         throw new Error("Failed to process audio file");
@@ -78,12 +61,9 @@ export default function UploadForm() {
         throw new Error(data.error);
       }
       
+      setProgress(100);
+      setProgressMessage("Separation complete!");
       setResult(data);
-      
-      // Close WebSocket
-      if (ws) {
-        ws.close();
-      }
     } catch (err) {
       setError(err.message);
       setProgress(0);
