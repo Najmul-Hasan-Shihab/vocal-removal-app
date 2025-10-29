@@ -40,7 +40,8 @@ export default function UploadForm() {
     
     try {
       // Establish WebSocket connection for progress updates
-      const ws = new WebSocket(`ws://localhost:8000/ws/${clientIdRef.current}`);
+      // Use wss:// for secure WebSocket connection with Render
+      const ws = new WebSocket(`wss://vocal-removal-app.onrender.com/ws/${clientIdRef.current}`);
       wsRef.current = ws;
       
       ws.onmessage = (event) => {
@@ -61,7 +62,7 @@ export default function UploadForm() {
       const form = new FormData();
       form.append("file", file);
       
-      const resp = await fetch(`http://localhost:8000/separate/${clientIdRef.current}`, {
+      const resp = await fetch(`https://vocal-removal-app.onrender.com/separate/${clientIdRef.current}`, {
         method: "POST",
         body: form,
       });
@@ -92,7 +93,7 @@ export default function UploadForm() {
   };
 
   const downloadFile = (filename, label) => {
-    const url = `http://localhost:8000/download/${filename}`;
+    const url = `https://vocal-removal-app.onrender.com/download/${filename}`;
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
@@ -192,7 +193,7 @@ export default function UploadForm() {
                 <audio 
                   controls 
                   className="audio-player"
-                  src={`http://localhost:8000/download/${result.vocals}`}
+                  src={`https://vocal-removal-app.onrender.com/download/${result.vocals}`}
                 >
                   Your browser does not support the audio element.
                 </audio>
@@ -219,7 +220,7 @@ export default function UploadForm() {
                 <audio 
                   controls 
                   className="audio-player"
-                  src={`http://localhost:8000/download/${result.instrumental}`}
+                  src={`https://vocal-removal-app.onrender.com/download/${result.instrumental}`}
                 >
                   Your browser does not support the audio element.
                 </audio>
