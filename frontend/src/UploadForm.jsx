@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./UploadForm.css";
 
 export default function UploadForm() {
@@ -8,7 +8,17 @@ export default function UploadForm() {
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
-  const clientId = Math.random().toString(36).substring(7);
+  const wsRef = useRef(null);
+  const clientIdRef = useRef(Math.random().toString(36).substring(7));
+
+  useEffect(() => {
+    // Cleanup WebSocket on unmount
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, []);
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -27,28 +37,34 @@ export default function UploadForm() {
     setError(null);
     setProgress(0);
     setResult(null);
-    setProgressMessage("Uploading file...");
     
     try {
-      // Simulate progress updates since WebSocket might not work on Render free tier
-      const progressInterval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 90) return prev;
-          return prev + Math.random() * 10;
-        });
-      }, 2000);
+      // Establish WebSocket connection for progress updates
+      const ws = new WebSocket(`ws://localhost:8000/ws/${clientIdRef.current}`);
+      wsRef.current = ws;
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        setProgress(data.progress);
+        setProgressMessage(data.message);
+      };
+      
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+      };
+      
+      // Wait for WebSocket to connect
+      await new Promise((resolve) => {
+        ws.onopen = resolve;
+      });
       
       const form = new FormData();
       form.append("file", file);
       
-      setProgressMessage("Processing audio... This may take 5-6 minutes for high quality.");
-      
-      const resp = await fetch(`http://localhost:8000/separate/${clientId}`, {
+      const resp = await fetch(`http://localhost:8000/separate/${clientIdRef.current}`, {
         method: "POST",
         body: form,
       });
-      
-      clearInterval(progressInterval);
       
       if (!resp.ok) {
         throw new Error("Failed to process audio file");
@@ -61,9 +77,12 @@ export default function UploadForm() {
         throw new Error(data.error);
       }
       
-      setProgress(100);
-      setProgressMessage("Separation complete!");
       setResult(data);
+      
+      // Close WebSocket
+      if (ws) {
+        ws.close();
+      }
     } catch (err) {
       setError(err.message);
       setProgress(0);
