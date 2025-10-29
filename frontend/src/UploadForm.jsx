@@ -43,7 +43,7 @@ export default function UploadForm() {
       
       setProgressMessage("Processing audio... This may take 5-6 minutes for high quality.");
       
-      const resp = await fetch(`https://vocal-removal-app.onrender.com/separate/${clientId}`, {
+      const resp = await fetch(`http://localhost:8000/separate/${clientId}`, {
         method: "POST",
         body: form,
       });
@@ -73,7 +73,7 @@ export default function UploadForm() {
   };
 
   const downloadFile = (filename, label) => {
-    const url = `https://vocal-removal-app.onrender.com/download/${filename}`;
+    const url = `http://localhost:8000/download/${filename}`;
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
@@ -173,7 +173,7 @@ export default function UploadForm() {
                 <audio 
                   controls 
                   className="audio-player"
-                  src={`https://vocal-removal-app.onrender.com/download/${result.vocals}`}
+                  src={`http://localhost:8000/download/${result.vocals}`}
                 >
                   Your browser does not support the audio element.
                 </audio>
@@ -200,7 +200,7 @@ export default function UploadForm() {
                 <audio 
                   controls 
                   className="audio-player"
-                  src={`https://vocal-removal-app.onrender.com/download/${result.instrumental}`}
+                  src={`http://localhost:8000/download/${result.instrumental}`}
                 >
                   Your browser does not support the audio element.
                 </audio>
